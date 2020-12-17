@@ -5,6 +5,8 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <avr/sleep.h>
+#include <Encoder.h>    // Verwendung der <Encoder.h> Bibliothek 
+
 
 /*
    _____         _____ _____ _____ _____
@@ -19,6 +21,9 @@
 
 // uncomment the below line to enable five button support
 //#define FIVEBUTTONS
+
+// uncomment the below line to enable the rotary encoder mode for volume control
+#define ROTARY
 
 static const uint32_t cardCookie = 322417479;
 
@@ -63,6 +68,12 @@ struct adminSettings {
   uint8_t adminMenuLocked;
   uint8_t adminMenuPin[4];
 };
+
+#ifdef ROTARY
+int16_t encOldPos ;
+int16_t encPos = 15;
+#endif
+
 
 adminSettings mySettings;
 nfcTagObject myCard;
@@ -650,6 +661,13 @@ MFRC522::StatusCode status;
 #define buttonFivePin A4
 #endif
 
+#ifdef ROTARY
+#define encPinA 6
+#define encPinB 5
+//#define encPinSw A5 // Switch
+#define encSteps 4
+#endif
+
 #define LONG_PRESS 1000
 
 Button pauseButton(buttonPause);
@@ -665,6 +683,12 @@ bool ignoreDownButton = false;
 #ifdef FIVEBUTTONS
 bool ignoreButtonFour = false;
 bool ignoreButtonFive = false;
+#endif
+
+#ifdef ROTARY
+Encoder meinEncoder(encPinA,encPinB);
+//ClickEncoder encoder(encPinA, encPinB, encSteps);
+//ClickEncoder encoder(encPinA, encPinB, encPinSw, encSteps);
 #endif
 
 /// Funktionen für den Standby Timer (z.B. über Pololu-Switch oder Mosfet)
@@ -830,6 +854,53 @@ void volumeDownButton() {
   Serial.println(volume);
 }
 
+
+#ifdef ROTARY
+// Volume and switch control for rotary encoder
+void readRotaryEncoder() {
+  // get encoder value and set volume
+  encPos = meinEncoder.read();
+  if (encPos != encOldPos) {
+    encOldPos = encPos;
+    if (encPos > mySettings.maxVolume) {
+      volume = mySettings.maxVolume;
+      encPos = mySettings.maxVolume;
+    }
+    else if (encPos < mySettings.minVolume) {
+      volume = mySettings.minVolume;
+      encPos = mySettings.minVolume;
+    }
+    else {
+      volume = encPos;
+    }
+    mp3.setVolume(volume);
+    Serial.println(volume);
+  }
+//  // get encoder button state
+//  uint8_t encButtonState = encoder.getButton();
+//  if (encButtonState != 0) {
+//    Serial.print("Button: "); Serial.println(encButtonState);
+//    switch (encButtonState) {
+//      case ClickEncoder::Open:          //0
+//        break;
+//      case ClickEncoder::Closed:        //1
+//        break;
+//      case ClickEncoder::Pressed:       //2
+//        break;
+//      case ClickEncoder::Held:          //3
+//        break;
+//      case ClickEncoder::Released:      //4
+//        break;
+//      case ClickEncoder::Clicked:       //5
+//        break;
+//      case ClickEncoder::DoubleClicked: //6
+//        break;
+//    }
+//  }
+}
+#endif
+
+
 void nextButton() {
   if (activeModifier != NULL)
     if (activeModifier->handleNextButton() == true)
@@ -954,6 +1025,11 @@ void loop() {
     if (activeModifier != NULL) {
       activeModifier->loop();
     }
+     
+    #ifdef ROTARY
+    // Read Rotary Encoder
+    readRotaryEncoder();
+    #endif ROTARY
 
     // Buttons werden nun über JS_Button gehandelt, dadurch kann jede Taste
     // doppelt belegt werden
