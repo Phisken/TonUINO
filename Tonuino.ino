@@ -1,3 +1,5 @@
+
+
 #include <DFMiniMp3.h>
 #include <EEPROM.h>
 #include <JC_Button.h>
@@ -6,6 +8,8 @@
 #include <SoftwareSerial.h>
 #include <avr/sleep.h>
 #include <Encoder.h>    // Verwendung der <Encoder.h> Bibliothek 
+#include <ClickEncoder.h>
+#include <TimerOne.h>
 
 
 /*
@@ -686,8 +690,7 @@ bool ignoreButtonFive = false;
 #endif
 
 #ifdef ROTARY
-Encoder meinEncoder(encPinA,encPinB);
-//ClickEncoder encoder(encPinA, encPinB, encSteps);
+ClickEncoder encoder(encPinA, encPinB, encSteps);
 //ClickEncoder encoder(encPinA, encPinB, encPinSw, encSteps);
 #endif
 
@@ -763,6 +766,14 @@ void setup() {
   Serial.println(F("TonUINO Version 2.1"));
   Serial.println(F("created by Thorsten Voß and licensed under GNU/GPL."));
   Serial.println(F("Information and contribution at https://tonuino.de.\n"));
+
+
+  // Rotary encoder initialisieren
+  #ifdef ROTARY
+  Timer1.initialize(1000);
+  Timer1.attachInterrupt(timerIsr);
+  encoder.setAccelerationEnabled(false);
+  #endif
 
   // Busy Pin
   pinMode(busyPin, INPUT);
@@ -859,7 +870,9 @@ void volumeDownButton() {
 // Volume and switch control for rotary encoder
 void readRotaryEncoder() {
   // get encoder value and set volume
-  encPos = meinEncoder.read();
+  encPos += encoder.getValue();
+  //Serial.println(encPos);
+  
   if (encPos != encOldPos) {
     encOldPos = encPos;
     if (encPos > mySettings.maxVolume) {
@@ -1881,3 +1894,9 @@ bool checkTwo ( uint8_t a[], uint8_t b[] ) {
   }
   return true;
 }
+
+#ifdef ROTARY
+void timerIsr() {
+  encoder.service();
+}
+#endif
