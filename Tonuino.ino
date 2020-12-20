@@ -7,7 +7,6 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <avr/sleep.h>
-#include <Encoder.h>    // Verwendung der <Encoder.h> Bibliothek 
 #include <ClickEncoder.h>
 #include <TimerOne.h>
 
